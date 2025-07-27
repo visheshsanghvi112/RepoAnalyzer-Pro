@@ -13,15 +13,15 @@ logger = logging.getLogger(__name__)
 
 class APIAnalyzer:
     def __init__(self):
-        self.max_retries = 3
-        self.retry_delay = 2
+        self.max_retries = 2  # Reduced retries to avoid quota issues
+        self.retry_delay = 1  # Reduced delay
     
     def analyze_with_retry(self, analysis_type: str, prompt: str) -> Dict[str, Any]:
         """Analyze with retry logic and proper error handling"""
         api_key = get_api_key(analysis_type)
         if not api_key:
             logger.error(f"No API key found for {analysis_type}")
-            return self._get_fallback_response(analysis_type)
+            return self._get_fallback_response(analysis_type, "NO_API_KEY")
         
         for attempt in range(self.max_retries):
             try:
@@ -32,16 +32,27 @@ class APIAnalyzer:
                     logger.info(f"✅ {analysis_type} analysis completed successfully")
                     return result
                 else:
-                    logger.warning(f"⚠️ {analysis_type} analysis returned error: {result}")
+                    error_msg = result.get("error", "Unknown error") if result else "No response"
+                    logger.warning(f"⚠️ {analysis_type} analysis returned error: {error_msg}")
+                    
+                    # Check if it's a quota error and don't retry
+                    if "429" in str(error_msg) or "quota" in str(error_msg).lower():
+                        logger.error(f"❌ {analysis_type} analysis failed due to quota limits - skipping retries")
+                        return self._get_fallback_response(analysis_type, "QUOTA_EXCEEDED")
                     
             except Exception as e:
                 logger.error(f"❌ {analysis_type} analysis failed (attempt {attempt + 1}): {str(e)}")
+                
+                # Check if it's a quota error and don't retry
+                if "429" in str(e) or "quota" in str(e).lower():
+                    logger.error(f"❌ {analysis_type} analysis failed due to quota limits - skipping retries")
+                    return self._get_fallback_response(analysis_type, "QUOTA_EXCEEDED")
                 
             if attempt < self.max_retries - 1:
                 time.sleep(self.retry_delay * (attempt + 1))  # Exponential backoff
         
         # If all retries failed, return a structured error response
-        return self._get_fallback_response(analysis_type)
+        return self._get_fallback_response(analysis_type, "API_FAILED")
     
     def _call_gemini_api(self, prompt: str, api_key: str) -> Dict[str, Any]:
         """Make the actual API call to Gemini"""
@@ -70,59 +81,131 @@ class APIAnalyzer:
             logger.error(f"Gemini API call failed: {e}")
             return {"error": str(e)}
     
-    def _get_fallback_response(self, analysis_type: str) -> Dict[str, Any]:
+    def _get_fallback_response(self, analysis_type: str, error_type: str = "GENERAL") -> Dict[str, Any]:
         """Provide structured fallback responses when API fails"""
+        
+        if error_type == "QUOTA_EXCEEDED":
+            error_message = "API quota exceeded. Please check your Gemini API billing and quota limits."
+            action_message = "Upgrade your Gemini API plan or wait for quota reset"
+        elif error_type == "NO_API_KEY":
+            error_message = "No API key configured. Please set up your Gemini API keys in the .env file."
+            action_message = "Configure API keys in .env file"
+        else:
+            error_message = "API analysis failed due to technical issues."
+            action_message = "Check your internet connection and API key validity"
+        
         fallbacks = {
             "architecture_flow": {
-                "architecture_summary": "Unable to analyze architecture due to API issues. Please check your API keys in .env file.",
-                "execution_flow": [],
-                "main_components": [],
-                "entry_points": ["Analysis failed - check API configuration"],
-                "data_flow": "Analysis unavailable",
-                "key_insights": ["API analysis failed - verify API keys"],
+                "architecture_summary": f"Unable to analyze architecture: {error_message}",
+                "execution_flow": [
+                    {
+                        "step": 1,
+                        "description": "Analysis unavailable due to API issues",
+                        "files_involved": ["N/A"],
+                        "purpose": "Please check API configuration"
+                    }
+                ],
+                "main_components": [
+                    {
+                        "name": "API Configuration",
+                        "purpose": "Ensure proper API key setup",
+                        "location": ".env file",
+                        "dependencies": ["Valid Gemini API key"]
+                    }
+                ],
+                "entry_points": [action_message],
+                "data_flow": "Analysis unavailable - check API setup",
+                "key_insights": [f"Action required: {action_message}"],
                 "complexity_level": "UNKNOWN"
             },
             "mind_map": {
-                "mind_map_overview": "Unable to generate mind map due to API issues. Please check your API keys in .env file.",
-                "main_categories": [],
-                "core_features": [],
-                "file_relationships": [],
-                "visual_structure": "Analysis unavailable",
-                "key_insights": ["API analysis failed - verify API keys"]
+                "mind_map_overview": f"Unable to generate mind map: {error_message}",
+                "main_categories": [
+                    {
+                        "category": "Setup Required",
+                        "description": "API configuration needed",
+                        "subcategories": [
+                            {
+                                "name": "API Keys",
+                                "files": [".env"],
+                                "purpose": "Configure Gemini API keys"
+                            }
+                        ],
+                        "importance": "HIGH"
+                    }
+                ],
+                "core_features": ["API Key Management"],
+                "file_relationships": [
+                    {
+                        "from": "User",
+                        "to": "API Configuration",
+                        "relationship": "Setup required"
+                    }
+                ],
+                "visual_structure": "Configure API keys to enable analysis",
+                "key_insights": [f"Next step: {action_message}"]
             },
             "code_quality": {
-                "quality_overview": "Unable to analyze code quality due to API issues. Please check your API keys in .env file.",
-                "quality_score": "0/10 - Analysis failed",
-                "strengths": [],
-                "areas_for_improvement": [],
+                "quality_overview": f"Unable to analyze code quality: {error_message}",
+                "quality_score": "0/10 - API configuration required",
+                "strengths": ["Error handling is working correctly"],
+                "areas_for_improvement": [
+                    {
+                        "area": "API Configuration",
+                        "current_state": "API keys not configured or quota exceeded",
+                        "recommendation": action_message,
+                        "priority": "HIGH"
+                    }
+                ],
                 "code_organization": "Analysis unavailable",
                 "readability": "Analysis unavailable",
                 "documentation_status": "Analysis unavailable",
                 "testing_coverage": "Analysis unavailable",
                 "maintainability": "Analysis unavailable",
-                "immediate_improvements": ["Check API configuration in .env file"]
+                "immediate_improvements": [action_message]
             },
             "security": {
-                "security_overview": "Unable to perform security analysis due to API issues. Please check your API keys in .env file.",
-                "critical_issues": [],
-                "security_strengths": [],
+                "security_overview": f"Unable to perform security analysis: {error_message}",
+                "critical_issues": [
+                    {
+                        "issue": "API Configuration Issue",
+                        "severity": "HIGH",
+                        "impact": "Security analysis unavailable",
+                        "fix": action_message
+                    }
+                ],
+                "security_strengths": ["Error handling prevents crashes"],
                 "authentication_status": "Analysis unavailable",
                 "data_protection": "Analysis unavailable",
-                "immediate_actions": ["Verify API keys in .env file"],
+                "immediate_actions": [action_message],
                 "overall_risk": "UNKNOWN",
-                "security_score": "0/10 - Analysis failed"
+                "security_score": "0/10 - API setup required"
             },
             "performance": {
-                "performance_overview": "Unable to analyze performance due to API issues. Please check your API keys in .env file.",
-                "performance_score": "0/10 - Analysis failed",
-                "bottlenecks": [],
-                "optimization_opportunities": [],
+                "performance_overview": f"Unable to analyze performance: {error_message}",
+                "performance_score": "0/10 - API configuration required",
+                "bottlenecks": [
+                    {
+                        "issue": "API Configuration",
+                        "impact": "Performance analysis unavailable",
+                        "location": "API setup",
+                        "solution": action_message
+                    }
+                ],
+                "optimization_opportunities": [
+                    {
+                        "area": "API Setup",
+                        "potential_gain": "Enable all analysis features",
+                        "effort": "LOW",
+                        "recommendation": action_message
+                    }
+                ],
                 "scalability": "Analysis unavailable",
                 "resource_efficiency": "Analysis unavailable",
                 "caching_strategies": "Analysis unavailable",
                 "database_performance": "Analysis unavailable",
-                "monitoring_suggestions": ["Check API configuration"],
-                "quick_wins": ["Verify API keys in .env file"]
+                "monitoring_suggestions": [action_message],
+                "quick_wins": [action_message]
             }
         }
         

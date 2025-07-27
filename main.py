@@ -20,6 +20,7 @@ from api_handlers import (
     run_security_analysis,
     run_performance_analysis
 )
+from config import validate_api_keys, get_api_key, GEMINI_APIS, DEFAULT_API_KEY
 from uuid import uuid4
 import subprocess
 import threading
@@ -46,6 +47,49 @@ app.add_middleware(
 class AnalyzeRequest(BaseModel):
     repo_url: str
 
+class SummarizeRequest(BaseModel):
+    repo_url: str
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "message": "RepoAnalyzer-Pro is running"}
+
+@app.get("/api-status")
+async def api_status():
+    """Check API key configuration status"""
+    try:
+        has_keys = validate_api_keys()
+        key_status = {}
+        
+        # Check individual API keys
+        for analysis_type, api_key in GEMINI_APIS.items():
+            key_status[analysis_type] = {
+                "configured": bool(api_key),
+                "key_preview": f"{api_key[:8]}..." if api_key else "Not set"
+            }
+        
+        # Check default API key
+        key_status["default"] = {
+            "configured": bool(DEFAULT_API_KEY),
+            "key_preview": f"{DEFAULT_API_KEY[:8]}..." if DEFAULT_API_KEY else "Not set"
+        }
+        
+        return {
+            "status": "configured" if has_keys else "not_configured",
+            "message": "API keys are configured" if has_keys else "No API keys found. Please configure your .env file.",
+            "keys": key_status,
+            "recommendation": "Configure API keys in .env file" if not has_keys else "Ready to analyze repositories"
+        }
+    except Exception as e:
+        logger.error(f"Error checking API status: {e}")
+        return {
+            "status": "error",
+            "message": f"Error checking API configuration: {str(e)}",
+            "keys": {},
+            "recommendation": "Check your configuration and try again"
+        }
+
 @app.post("/analyze")
 async def analyze_repo(request: AnalyzeRequest) -> Any:
     try:
@@ -56,11 +100,15 @@ async def analyze_repo(request: AnalyzeRequest) -> Any:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-class SummarizeRequest(BaseModel):
-    repo_url: str
-
 @app.post("/summarize-repo")
 async def summarize_repo(request: SummarizeRequest, background_tasks: BackgroundTasks):
+    # Check if API keys are configured
+    if not validate_api_keys():
+        raise HTTPException(
+            status_code=400, 
+            detail="API keys not configured. Please set up your Gemini API keys in the .env file. See /api-status for details."
+        )
+    
     job_id = str(uuid4())
     jobs[job_id] = {
         "status": "queued", 
