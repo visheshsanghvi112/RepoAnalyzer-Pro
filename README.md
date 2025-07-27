@@ -13,6 +13,7 @@ A powerful, multi-API repository analysis tool that provides comprehensive insig
 - **🔄 Real-time Progress**: Live progress tracking with job-based processing
 - **💾 Persistent Storage**: Results saved in localStorage for session persistence
 - **🎨 Modern UI**: Beautiful SaaS-like interface with tabbed navigation
+- **🔐 Secure API Management**: Environment-based API key configuration
 
 ## 🛠️ Tech Stack
 
@@ -44,6 +45,10 @@ cd RepoAnalyzer-Pro
 # Install Python dependencies
 pip install -r requirements.txt
 
+# Configure API keys (see Environment Variables section below)
+cp env.example .env
+# Edit .env with your API keys
+
 # Start the backend server
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -61,10 +66,27 @@ npm run dev
 ```
 
 ### Environment Variables
-Create a `.env` file in the root directory:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
+Create a `.env` file in the root directory by copying `env.example`:
+
+```bash
+cp env.example .env
 ```
+
+Then edit `.env` with your API keys:
+
+```env
+# Option 1: Single API Key (for all analysis types)
+GEMINI_API_KEY=your_single_gemini_api_key_here
+
+# Option 2: Multiple Specialized API Keys (recommended for better performance)
+GEMINI_API_KEY_ARCHITECTURE=your_architecture_analysis_api_key
+GEMINI_API_KEY_MINDMAP=your_mind_map_analysis_api_key
+GEMINI_API_KEY_QUALITY=your_code_quality_analysis_api_key
+GEMINI_API_KEY_SECURITY=your_security_analysis_api_key
+GEMINI_API_KEY_PERFORMANCE=your_performance_analysis_api_key
+```
+
+**🔐 Security Note**: Never commit your `.env` file to version control. It's already included in `.gitignore`.
 
 ## 📖 Usage
 
@@ -91,10 +113,12 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ```
 ├── main.py              # FastAPI application and endpoints
 ├── api_handlers.py      # Specialized AI analysis functions
+├── config.py            # Secure API key configuration
 ├── repo_cloner.py       # Repository cloning logic
 ├── tree_parser.py       # File tree parsing
 ├── requirements.txt     # Python dependencies
-└── .env                 # Environment variables
+├── env.example          # Example environment configuration
+└── .env                 # Your API keys (not in git)
 ```
 
 ### Frontend Structure
@@ -142,7 +166,8 @@ cache/ambica-pharma-portal/
 
 ## 🔒 Security Features
 
-- **API Key Management**: Secure handling of multiple Gemini API keys
+- **Secure API Key Management**: Environment-based configuration
+- **No Hardcoded Secrets**: All API keys loaded from environment variables
 - **Error Handling**: Robust retry logic and fallback responses
 - **Input Validation**: Safe repository URL processing
 - **CORS Configuration**: Proper cross-origin request handling
@@ -153,6 +178,23 @@ cache/ambica-pharma-portal/
 - **Progress Tracking**: Real-time status updates
 - **Caching**: Results persist across sessions
 - **Error Recovery**: Graceful handling of API failures
+
+## 🔐 API Key Configuration
+
+### Getting Gemini API Keys
+1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Copy the key to your `.env` file
+
+### Configuration Options
+- **Single Key**: Use one API key for all analysis types
+- **Multiple Keys**: Use different keys for each analysis type (recommended)
+
+### Troubleshooting
+If you see "API analysis failed" messages:
+1. Check that your `.env` file exists and contains valid API keys
+2. Verify your API keys are active and have sufficient quota
+3. Ensure the `.env` file is in the root directory of the project
 
 ## 🤝 Contributing
 

@@ -5,19 +5,11 @@ import time
 from typing import Dict, Any, Optional
 import asyncio
 import concurrent.futures
+from config import get_api_key, validate_api_keys
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Multiple Gemini API keys for different specialized analyses
-GEMINI_APIS = {
-    "architecture_flow": "AIzaSyDEv3121msA2VHJewPcro81mokCGGf95E4",
-    "mind_map": "AIzaSyAh6m4JhelFmBEmROkUuXM0w4jj1roJWfg", 
-    "code_quality": "AIzaSyASLMKap45M58cA4tD33qmRlxcwVbtdDHI",
-    "security": "AIzaSyDdKX6TK9JXMbMWFzDJ92XemU-JbUa_KU4",
-    "performance": "AIzaSyARDiJ0B2jIGeTm9-L9ay0mPNu3PTO1G7A"
-}
 
 class APIAnalyzer:
     def __init__(self):
@@ -26,9 +18,10 @@ class APIAnalyzer:
     
     def analyze_with_retry(self, analysis_type: str, prompt: str) -> Dict[str, Any]:
         """Analyze with retry logic and proper error handling"""
-        api_key = GEMINI_APIS.get(analysis_type)
+        api_key = get_api_key(analysis_type)
         if not api_key:
-            return {"error": f"No API key found for {analysis_type}"}
+            logger.error(f"No API key found for {analysis_type}")
+            return self._get_fallback_response(analysis_type)
         
         for attempt in range(self.max_retries):
             try:
@@ -81,24 +74,24 @@ class APIAnalyzer:
         """Provide structured fallback responses when API fails"""
         fallbacks = {
             "architecture_flow": {
-                "architecture_summary": "Unable to analyze architecture due to API issues. Please try again.",
+                "architecture_summary": "Unable to analyze architecture due to API issues. Please check your API keys in .env file.",
                 "execution_flow": [],
                 "main_components": [],
-                "entry_points": ["Analysis failed - retry recommended"],
+                "entry_points": ["Analysis failed - check API configuration"],
                 "data_flow": "Analysis unavailable",
-                "key_insights": ["API analysis failed"],
+                "key_insights": ["API analysis failed - verify API keys"],
                 "complexity_level": "UNKNOWN"
             },
             "mind_map": {
-                "mind_map_overview": "Unable to generate mind map due to API issues. Please try again.",
+                "mind_map_overview": "Unable to generate mind map due to API issues. Please check your API keys in .env file.",
                 "main_categories": [],
                 "core_features": [],
                 "file_relationships": [],
                 "visual_structure": "Analysis unavailable",
-                "key_insights": ["API analysis failed"]
+                "key_insights": ["API analysis failed - verify API keys"]
             },
             "code_quality": {
-                "quality_overview": "Unable to analyze code quality due to API issues. Please try again.",
+                "quality_overview": "Unable to analyze code quality due to API issues. Please check your API keys in .env file.",
                 "quality_score": "0/10 - Analysis failed",
                 "strengths": [],
                 "areas_for_improvement": [],
@@ -107,20 +100,20 @@ class APIAnalyzer:
                 "documentation_status": "Analysis unavailable",
                 "testing_coverage": "Analysis unavailable",
                 "maintainability": "Analysis unavailable",
-                "immediate_improvements": ["Retry the analysis"]
+                "immediate_improvements": ["Check API configuration in .env file"]
             },
             "security": {
-                "security_overview": "Unable to perform security analysis due to API issues. Please try again.",
+                "security_overview": "Unable to perform security analysis due to API issues. Please check your API keys in .env file.",
                 "critical_issues": [],
                 "security_strengths": [],
                 "authentication_status": "Analysis unavailable",
                 "data_protection": "Analysis unavailable",
-                "immediate_actions": ["Retry the security analysis"],
+                "immediate_actions": ["Verify API keys in .env file"],
                 "overall_risk": "UNKNOWN",
                 "security_score": "0/10 - Analysis failed"
             },
             "performance": {
-                "performance_overview": "Unable to analyze performance due to API issues. Please try again.",
+                "performance_overview": "Unable to analyze performance due to API issues. Please check your API keys in .env file.",
                 "performance_score": "0/10 - Analysis failed",
                 "bottlenecks": [],
                 "optimization_opportunities": [],
@@ -128,8 +121,8 @@ class APIAnalyzer:
                 "resource_efficiency": "Analysis unavailable",
                 "caching_strategies": "Analysis unavailable",
                 "database_performance": "Analysis unavailable",
-                "monitoring_suggestions": ["Retry the analysis"],
-                "quick_wins": ["Retry the analysis"]
+                "monitoring_suggestions": ["Check API configuration"],
+                "quick_wins": ["Verify API keys in .env file"]
             }
         }
         
