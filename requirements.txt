@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+GitPython
+google-generativeai
+python-multipart
+aiofiles
+chardet 

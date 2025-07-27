@@ -1,0 +1,368 @@
+import google.generativeai as genai
+import json
+import logging
+import time
+from typing import Dict, Any, Optional
+import asyncio
+import concurrent.futures
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Multiple Gemini API keys for different specialized analyses
+GEMINI_APIS = {
+    "architecture_flow": "AIzaSyDEv3121msA2VHJewPcro81mokCGGf95E4",
+    "mind_map": "AIzaSyAh6m4JhelFmBEmROkUuXM0w4jj1roJWfg", 
+    "code_quality": "AIzaSyASLMKap45M58cA4tD33qmRlxcwVbtdDHI",
+    "security": "AIzaSyDdKX6TK9JXMbMWFzDJ92XemU-JbUa_KU4",
+    "performance": "AIzaSyARDiJ0B2jIGeTm9-L9ay0mPNu3PTO1G7A"
+}
+
+class APIAnalyzer:
+    def __init__(self):
+        self.max_retries = 3
+        self.retry_delay = 2
+    
+    def analyze_with_retry(self, analysis_type: str, prompt: str) -> Dict[str, Any]:
+        """Analyze with retry logic and proper error handling"""
+        api_key = GEMINI_APIS.get(analysis_type)
+        if not api_key:
+            return {"error": f"No API key found for {analysis_type}"}
+        
+        for attempt in range(self.max_retries):
+            try:
+                logger.info(f"Attempting {analysis_type} analysis (attempt {attempt + 1})")
+                result = self._call_gemini_api(prompt, api_key)
+                
+                if result and "error" not in result:
+                    logger.info(f"✅ {analysis_type} analysis completed successfully")
+                    return result
+                else:
+                    logger.warning(f"⚠️ {analysis_type} analysis returned error: {result}")
+                    
+            except Exception as e:
+                logger.error(f"❌ {analysis_type} analysis failed (attempt {attempt + 1}): {str(e)}")
+                
+            if attempt < self.max_retries - 1:
+                time.sleep(self.retry_delay * (attempt + 1))  # Exponential backoff
+        
+        # If all retries failed, return a structured error response
+        return self._get_fallback_response(analysis_type)
+    
+    def _call_gemini_api(self, prompt: str, api_key: str) -> Dict[str, Any]:
+        """Make the actual API call to Gemini"""
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("models/gemini-2.5-pro")
+            response = model.generate_content(prompt)
+            
+            # Try to extract JSON from the response
+            try:
+                return json.loads(response.text)
+            except json.JSONDecodeError:
+                # Fallback: try to extract JSON substring
+                import re
+                match = re.search(r'\{[\s\S]*\}', response.text)
+                if match:
+                    try:
+                        return json.loads(match.group(0))
+                    except Exception as e:
+                        logger.error(f"Failed to parse JSON substring: {e}")
+                
+                logger.error('Could not parse Gemini response as JSON')
+                return {"error": "Could not parse response as JSON", "raw_response": response.text}
+                
+        except Exception as e:
+            logger.error(f"Gemini API call failed: {e}")
+            return {"error": str(e)}
+    
+    def _get_fallback_response(self, analysis_type: str) -> Dict[str, Any]:
+        """Provide structured fallback responses when API fails"""
+        fallbacks = {
+            "architecture_flow": {
+                "architecture_summary": "Unable to analyze architecture due to API issues. Please try again.",
+                "execution_flow": [],
+                "main_components": [],
+                "entry_points": ["Analysis failed - retry recommended"],
+                "data_flow": "Analysis unavailable",
+                "key_insights": ["API analysis failed"],
+                "complexity_level": "UNKNOWN"
+            },
+            "mind_map": {
+                "mind_map_overview": "Unable to generate mind map due to API issues. Please try again.",
+                "main_categories": [],
+                "core_features": [],
+                "file_relationships": [],
+                "visual_structure": "Analysis unavailable",
+                "key_insights": ["API analysis failed"]
+            },
+            "code_quality": {
+                "quality_overview": "Unable to analyze code quality due to API issues. Please try again.",
+                "quality_score": "0/10 - Analysis failed",
+                "strengths": [],
+                "areas_for_improvement": [],
+                "code_organization": "Analysis unavailable",
+                "readability": "Analysis unavailable",
+                "documentation_status": "Analysis unavailable",
+                "testing_coverage": "Analysis unavailable",
+                "maintainability": "Analysis unavailable",
+                "immediate_improvements": ["Retry the analysis"]
+            },
+            "security": {
+                "security_overview": "Unable to perform security analysis due to API issues. Please try again.",
+                "critical_issues": [],
+                "security_strengths": [],
+                "authentication_status": "Analysis unavailable",
+                "data_protection": "Analysis unavailable",
+                "immediate_actions": ["Retry the security analysis"],
+                "overall_risk": "UNKNOWN",
+                "security_score": "0/10 - Analysis failed"
+            },
+            "performance": {
+                "performance_overview": "Unable to analyze performance due to API issues. Please try again.",
+                "performance_score": "0/10 - Analysis failed",
+                "bottlenecks": [],
+                "optimization_opportunities": [],
+                "scalability": "Analysis unavailable",
+                "resource_efficiency": "Analysis unavailable",
+                "caching_strategies": "Analysis unavailable",
+                "database_performance": "Analysis unavailable",
+                "monitoring_suggestions": ["Retry the analysis"],
+                "quick_wins": ["Retry the analysis"]
+            }
+        }
+        
+        return fallbacks.get(analysis_type, {"error": f"Unknown analysis type: {analysis_type}"})
+
+# Create global analyzer instance
+api_analyzer = APIAnalyzer()
+
+def run_architecture_analysis(file_tree: str, file_contents: str, readme: str) -> Dict[str, Any]:
+    """Analyze architecture and execution flow with robust error handling"""
+    prompt = f"""
+    Analyze the architecture and execution flow of this repository. Provide a CLEAN, EASY-TO-UNDERSTAND explanation.
+    
+    Focus on:
+    1. How the application starts and runs
+    2. Main components and their relationships
+    3. Data flow between different parts
+    4. Entry points and key functions
+    5. Dependencies and external integrations
+    
+    File Tree: {file_tree}
+    Key Files: {str(file_contents)[:3000]}
+    README: {readme or "(none)"}
+    
+    Return a CLEAN, STRUCTURED JSON response:
+    {{
+        "architecture_summary": "Brief overview of how the system works",
+        "execution_flow": [
+            {{
+                "step": "Step number",
+                "description": "What happens in this step",
+                "files_involved": ["relevant files"],
+                "purpose": "Why this step is important"
+            }}
+        ],
+        "main_components": [
+            {{
+                "name": "Component name",
+                "purpose": "What it does",
+                "location": "Where it's located",
+                "dependencies": ["what it depends on"]
+            }}
+        ],
+        "entry_points": ["How to start/run the application"],
+        "data_flow": "How data moves through the system",
+        "key_insights": ["Important architectural observations"],
+        "complexity_level": "SIMPLE/MODERATE/COMPLEX"
+    }}
+    
+    IMPORTANT: Make this EASY TO UNDERSTAND for developers. Focus on clarity, not technical jargon.
+    """
+    
+    return api_analyzer.analyze_with_retry("architecture_flow", prompt)
+
+def run_mind_map_analysis(file_tree: str, file_contents: str, readme: str) -> Dict[str, Any]:
+    """Generate a visual mind map structure with robust error handling"""
+    prompt = f"""
+    Create a visual mind map structure of this repository. Provide a CLEAN, ORGANIZED breakdown.
+    
+    Focus on:
+    1. Main categories and subcategories
+    2. File relationships and hierarchies
+    3. Functional groupings
+    4. Core features and modules
+    5. Visual organization structure
+    
+    File Tree: {file_tree}
+    Key Files: {str(file_contents)[:3000]}
+    README: {readme or "(none)"}
+    
+    Return a CLEAN, STRUCTURED JSON response:
+    {{
+        "mind_map_overview": "Brief description of the repository structure",
+        "main_categories": [
+            {{
+                "category": "Category name",
+                "description": "What this category contains",
+                "subcategories": [
+                    {{
+                        "name": "Subcategory name",
+                        "files": ["list of files"],
+                        "purpose": "What these files do"
+                    }}
+                ],
+                "importance": "HIGH/MEDIUM/LOW"
+            }}
+        ],
+        "core_features": ["Main features of the application"],
+        "file_relationships": [
+            {{
+                "from": "Source file/component",
+                "to": "Target file/component",
+                "relationship": "How they're connected"
+            }}
+        ],
+        "visual_structure": "How to visualize this repository",
+        "key_insights": ["Important structural observations"]
+    }}
+    
+    IMPORTANT: Make this VISUAL and EASY TO UNDERSTAND. Focus on clear organization.
+    """
+    
+    return api_analyzer.analyze_with_retry("mind_map", prompt)
+
+def run_code_quality_analysis(file_tree: str, file_contents: str, readme: str) -> Dict[str, Any]:
+    """Analyze code quality and best practices with robust error handling"""
+    prompt = f"""
+    Analyze the code quality and best practices of this repository. Provide CLEAN, ACTIONABLE feedback.
+    
+    Focus on:
+    1. Code organization and structure
+    2. Naming conventions and readability
+    3. Error handling and robustness
+    4. Documentation quality
+    5. Testing coverage and practices
+    6. Maintainability and scalability
+    
+    File Tree: {file_tree}
+    Key Files: {str(file_contents)[:3000]}
+    README: {readme or "(none)"}
+    
+    Return a CLEAN, STRUCTURED JSON response:
+    {{
+        "quality_overview": "Brief summary of overall code quality",
+        "quality_score": "1-10 rating with explanation",
+        "strengths": ["What's done well"],
+        "areas_for_improvement": [
+            {{
+                "area": "Area to improve",
+                "current_state": "What's happening now",
+                "recommendation": "How to improve it",
+                "priority": "HIGH/MEDIUM/LOW"
+            }}
+        ],
+        "code_organization": "How well the code is structured",
+        "readability": "How easy the code is to understand",
+        "documentation_status": "Quality of documentation",
+        "testing_coverage": "How well the code is tested",
+        "maintainability": "How easy it is to maintain",
+        "immediate_improvements": ["Top 3 quick wins"]
+    }}
+    
+    IMPORTANT: Make this PRACTICAL and ACTIONABLE. Focus on specific improvements, not just criticism.
+    """
+    
+    return api_analyzer.analyze_with_retry("code_quality", prompt)
+
+def run_security_analysis(file_tree: str, file_contents: str, readme: str) -> Dict[str, Any]:
+    """Analyze security aspects with robust error handling"""
+    prompt = f"""
+    Perform a security analysis of this repository and provide a CLEAN, USER-FRIENDLY summary.
+    
+    Focus on:
+    1. CRITICAL vulnerabilities that need immediate attention
+    2. Security best practices being followed
+    3. Authentication and authorization mechanisms
+    4. Data handling and privacy concerns
+    5. Dependencies with known security issues
+    
+    File Tree: {file_tree}
+    Key Files: {str(file_contents)[:3000]}
+    README: {readme or "(none)"}
+    
+    Return a CLEAN, STRUCTURED JSON response:
+    {{
+        "security_overview": "Brief summary of overall security posture",
+        "critical_issues": [
+            {{
+                "issue": "Description of the vulnerability",
+                "severity": "HIGH/MEDIUM/LOW",
+                "impact": "What could happen",
+                "fix": "How to resolve it"
+            }}
+        ],
+        "security_strengths": ["Good security practices found"],
+        "authentication_status": "How authentication is handled",
+        "data_protection": "How sensitive data is protected",
+        "immediate_actions": ["Top 3 things to fix immediately"],
+        "overall_risk": "LOW/MEDIUM/HIGH/CRITICAL",
+        "security_score": "1-10 rating with explanation"
+    }}
+    
+    IMPORTANT: Make the output CLEAN and EASY TO READ. Focus on actionable insights, not technical jargon.
+    """
+    
+    return api_analyzer.analyze_with_retry("security", prompt)
+
+def run_performance_analysis(file_tree: str, file_contents: str, readme: str) -> Dict[str, Any]:
+    """Analyze performance characteristics with robust error handling"""
+    prompt = f"""
+    Analyze the performance characteristics of this repository. Provide CLEAN, PRACTICAL insights.
+    
+    Focus on:
+    1. Performance bottlenecks and slow areas
+    2. Optimization opportunities
+    3. Scalability considerations
+    4. Resource usage patterns
+    5. Caching and efficiency strategies
+    6. Database and query optimization
+    
+    File Tree: {file_tree}
+    Key Files: {str(file_contents)[:3000]}
+    README: {readme or "(none)"}
+    
+    Return a CLEAN, STRUCTURED JSON response:
+    {{
+        "performance_overview": "Brief summary of performance characteristics",
+        "performance_score": "1-10 rating with explanation",
+        "bottlenecks": [
+            {{
+                "issue": "Performance problem",
+                "impact": "How it affects performance",
+                "location": "Where it occurs",
+                "solution": "How to fix it"
+            }}
+        ],
+        "optimization_opportunities": [
+            {{
+                "area": "Area to optimize",
+                "potential_gain": "Expected improvement",
+                "effort": "LOW/MEDIUM/HIGH",
+                "recommendation": "How to optimize"
+            }}
+        ],
+        "scalability": "How well it handles growth",
+        "resource_efficiency": "How efficiently resources are used",
+        "caching_strategies": "Current and recommended caching",
+        "database_performance": "Database optimization opportunities",
+        "monitoring_suggestions": ["What to monitor for performance"],
+        "quick_wins": ["Easy performance improvements"]
+    }}
+    
+    IMPORTANT: Make this PRACTICAL and MEASURABLE. Focus on specific improvements with clear benefits.
+    """
+    
+    return api_analyzer.analyze_with_retry("performance", prompt) 

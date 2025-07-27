@@ -1,0 +1,33 @@
+You are an expert software engineer.
+
+Here is the structure and content of a GitHub repository.
+
+Your job is to:
+
+1. Summarize the repository in under 100 words.
+2. Identify the core technologies used.
+3. List the key files and describe what each file does in 1-2 lines.
+4. Explain the overall architecture or logic (if evident).
+5. Highlight folders or files that stand out or are critical to understanding this repo.
+
+Here is the data:
+
+## File Tree:
+{{file_tree}}
+
+## Key File Contents:
+{{file_contents}}
+
+## README (if available):
+{{readme}}
+
+Please return the output in JSON format with the following fields:
+{
+  "summary": "...",
+  "technologies": [...],
+  "important_files": [
+    { "path": "main.py", "description": "entry point of the app" }
+  ],
+  "architecture": "...",
+  "notes": [...]
+} 
