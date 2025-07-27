@@ -1,3 +1,22 @@
+"""
+RepoAnalyzer-Pro API Handlers
+============================
+
+Specialized AI analysis functions for repository analysis using multiple Gemini APIs.
+Each analysis type uses dedicated API keys for optimal performance and reliability.
+
+Created with ❤️ by Vishesh Sanghvi
+Website: http://visheshsanghvi.me/
+GitHub: https://github.com/visheshsanghvi112
+
+Analysis Types:
+- Architecture Flow Analysis
+- Mind Map Generation  
+- Security Analysis
+- Code Quality Assessment
+- Performance Insights
+"""
+
 import google.generativeai as genai
 import json
 import logging

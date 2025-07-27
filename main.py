@@ -1,3 +1,24 @@
+"""
+RepoAnalyzer-Pro - Multi-API Repository Analysis Tool
+====================================================
+
+A powerful tool that provides comprehensive insights into any GitHub repository 
+using specialized AI analysis with 5 different Gemini APIs.
+
+Created with ❤️ by Vishesh Sanghvi
+Website: http://visheshsanghvi.me/
+GitHub: https://github.com/visheshsanghvi112
+
+Features:
+- Architecture Flow Analysis
+- Mind Map Generation
+- Security Analysis
+- Code Quality Assessment
+- Performance Insights
+- Real-time Progress Tracking
+- Secure API Management
+"""
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -33,7 +54,20 @@ logger = logging.getLogger(__name__)
 # In-memory job store
 jobs = {}
 
-app = FastAPI()
+app = FastAPI(
+    title="RepoAnalyzer-Pro",
+    description="Multi-API Repository Analysis Tool by Vishesh Sanghvi",
+    version="1.0.0",
+    contact={
+        "name": "Vishesh Sanghvi",
+        "url": "http://visheshsanghvi.me/",
+        "email": "contact@visheshsanghvi.me"
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+    }
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -53,7 +87,12 @@ class SummarizeRequest(BaseModel):
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "message": "RepoAnalyzer-Pro is running"}
+    return {
+        "status": "healthy", 
+        "message": "RepoAnalyzer-Pro is running",
+        "creator": "Vishesh Sanghvi",
+        "website": "http://visheshsanghvi.me/"
+    }
 
 @app.get("/api-status")
 async def api_status():
@@ -79,7 +118,9 @@ async def api_status():
             "status": "configured" if has_keys else "not_configured",
             "message": "API keys are configured" if has_keys else "No API keys found. Please configure your .env file.",
             "keys": key_status,
-            "recommendation": "Configure API keys in .env file" if not has_keys else "Ready to analyze repositories"
+            "recommendation": "Configure API keys in .env file" if not has_keys else "Ready to analyze repositories",
+            "creator": "Vishesh Sanghvi",
+            "website": "http://visheshsanghvi.me/"
         }
     except Exception as e:
         logger.error(f"Error checking API status: {e}")
@@ -87,7 +128,9 @@ async def api_status():
             "status": "error",
             "message": f"Error checking API configuration: {str(e)}",
             "keys": {},
-            "recommendation": "Check your configuration and try again"
+            "recommendation": "Check your configuration and try again",
+            "creator": "Vishesh Sanghvi",
+            "website": "http://visheshsanghvi.me/"
         }
 
 @app.post("/analyze")
@@ -220,4 +263,6 @@ def analyze_with_gemini(file_tree, file_contents, readme):
 
 if __name__ == "__main__":
     import uvicorn
+    print("🚀 Starting RepoAnalyzer-Pro by Vishesh Sanghvi")
+    print("🌐 Website: http://visheshsanghvi.me/")
     uvicorn.run(app, host="0.0.0.0", port=8000) 

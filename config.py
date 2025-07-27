@@ -1,3 +1,21 @@
+"""
+RepoAnalyzer-Pro Configuration
+=============================
+
+Secure API key management and configuration for the RepoAnalyzer-Pro tool.
+Handles environment-based API key loading with fallback mechanisms.
+
+Created with ❤️ by Vishesh Sanghvi
+Website: http://visheshsanghvi.me/
+GitHub: https://github.com/visheshsanghvi112
+
+Features:
+- Environment-based API key loading
+- Multiple API key support for different analysis types
+- Fallback to single API key if multiple keys not provided
+- API key validation and status checking
+"""
+
 import os
 from dotenv import load_dotenv
 

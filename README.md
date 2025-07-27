@@ -2,6 +2,8 @@
 
 A powerful, multi-API repository analysis tool that provides comprehensive insights into any GitHub repository using specialized AI analysis.
 
+**Created with ❤️ by [Vishesh Sanghvi](http://visheshsanghvi.me/)**
+
 ## ✨ Features
 
 - **🔍 Multi-API Analysis**: Uses 5 specialized Gemini APIs for different analysis types
@@ -103,9 +105,11 @@ GEMINI_API_KEY_PERFORMANCE=your_performance_analysis_api_key
 
 ## 🔧 API Endpoints
 
-- `POST /summarize-repo`: Start repository analysis
-- `GET /summary-status`: Check analysis progress
-- `GET /get-summary`: Retrieve analysis results
+- `GET /health` - Health check endpoint
+- `GET /api-status` - Check API key configuration status
+- `POST /summarize-repo` - Start repository analysis
+- `GET /summary-status` - Check analysis progress
+- `GET /get-summary` - Retrieve analysis results
 
 ## 🏗️ Architecture
 
@@ -208,12 +212,23 @@ If you see "API analysis failed" messages:
 
 This project is licensed under the MIT License.
 
+## 👨‍💻 Creator
+
+**RepoAnalyzer-Pro** was created by **[Vishesh Sanghvi](http://visheshsanghvi.me/)**
+
+- 🌐 **Website**: [visheshsanghvi.me](http://visheshsanghvi.me/)
+- 🐙 **GitHub**: [@visheshsanghvi112](https://github.com/visheshsanghvi112)
+- 📧 **Contact**: Available through [visheshsanghvi.me](http://visheshsanghvi.me/)
+
 ## 🙏 Acknowledgments
 
+- **Vishesh Sanghvi** - Creator and Lead Developer
 - Google Gemini AI for powerful analysis capabilities
 - FastAPI for the excellent web framework
 - React and Tailwind CSS for the beautiful UI
 
 ---
 
-**Built with ❤️ for developers who want to understand their code better!** 
+**Built with ❤️ by [Vishesh Sanghvi](http://visheshsanghvi.me/) for developers who want to understand their code better!**
+
+*RepoAnalyzer-Pro - Making repository analysis intelligent, comprehensive, and accessible.* 
